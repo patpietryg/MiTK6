@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blockchain Frontend</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Blockchain Frontend</h1>
+    <h2>Dodaj nową transakcję</h2>
+    <form id="transactionForm">
+        Nadawca: <input type="text" id="sender" required><br>
+        Odbiorca: <input type="text" id="recipient" required><br>
+        Kwota: <input type="number" id="amount" required><br>
+        <button type="submit">Dodaj transakcję</button>
+    </form>
+
+    <h2>Aktualny stan łańcucha bloków</h2>
+    <div id="chain"></div>
+
+    <script>
+        $(document).ready(function() {
+            $.get("http://localhost:5000/chain", function(data) {
+                $("#chain").text(JSON.stringify(data, null, 2));
+            });
+
+            $("#transactionForm").submit(function(event) {
+                event.preventDefault();
+
+                var sender = $("#sender").val();
+                var recipient = $("#recipient").val();
+                var amount = $("#amount").val();
+
+                $.ajax({
+                    url: "http://localhost:5000/transactions/new",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                        sender: sender,
+                        recipient: recipient,
+                        amount: parseFloat(amount)
+                    }),
+                    success: function(data) {
+                        alert(data.message);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
