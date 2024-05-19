@@ -58,20 +58,11 @@ class Blockchain:
         if previous_hash != block.previous_hash:
             return False
 
-        if not self.is_valid_proof(block, proof):
-            return False
-
         block.hash = proof
         self.chain.append(block)
         return True
 
-    def is_valid_proof(self, block, block_hash):
-        """
-        Check if block_hash is valid hash of block and satisfies
-        the difficulty criteria.
-        """
-        return (block_hash.startswith('0' * Blockchain.difficulty) and
-                block_hash == block.compute_hash())
+
 
     def proof_of_work(self, block):
         """
@@ -97,6 +88,7 @@ class Blockchain:
             'amount': amount
         })
         return True
+
     def mine(self):
         """
         This function serves as an interface to add the pending
@@ -114,9 +106,13 @@ class Blockchain:
                           previous_hash=last_block.hash)
 
         proof = self.proof_of_work(new_block)
-        self.add_block(new_block, proof)
+
+        new_block.hash = proof
 
         self.unconfirmed_transactions = []
+
+        print(self.add_block(new_block, proof))
+
         return new_block.index
 
 
@@ -127,12 +123,14 @@ blockchain = Blockchain()
 @app.route('/transactions/new', methods=['POST'])
 def new_transaction():
     values = request.get_json()
-
+    print("wartosci ", values)
     required = ['sender', 'recipient', 'amount']
     if not all(k in values for k in required):
         return 'Brakujące dane', 400
 
     index = blockchain.add_new_transaction(values['sender'], values['recipient'], values['amount'])
+
+    blockchain.mine()
 
     response = {'message': f'Transakcja zostanie dodana do Bloku {index}'}
     return jsonify(response), 201
@@ -157,6 +155,35 @@ def full_chain():
     }
     return jsonify(response), 200
 
+@app.route('/transactions/pending', methods=['GET'])
+def get_pending_transactions():
+    """
+    Returns the list of pending transactions.
+    """
+    pending_txs = blockchain.unconfirmed_transactions
+    return jsonify({'transactions': pending_txs}), 200
+
+@app.route('/wallet/<address>', methods=['GET'])
+def get_wallet_balance(address):
+    """
+    Returns the balance of the wallet for a given address.
+    """
+    balance = 0
+    for block in blockchain.chain:
+        for tx in block.transactions:
+            if tx['sender'] == address:
+                balance -= tx['amount']
+            if tx['recipient'] == address:
+                balance += tx['amount']
+    return jsonify({'address': address, 'balance': balance}), 200
+
+@app.route('/chain/length', methods=['GET'])
+def get_chain_length():
+    """
+    Returns the length of the blockchain.
+    """
+    chain_length = len(blockchain.chain)
+    return jsonify({'chain_length': chain_length}), 200
 
 
 app.run(debug=True, port=5000)
